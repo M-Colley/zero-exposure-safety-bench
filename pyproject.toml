@@ -1,0 +1,78 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zero-exposure-safety-bench"
+version = "0.1.0"
+description = "Zero-exposure multimodal safety benchmark for graphic violence and child abuse detection cascades"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Mark Colley" }]
+requires-python = ">=3.11"
+urls = { Homepage = "https://github.com/M-Colley/zero-exposure-safety-bench", Repository = "https://github.com/M-Colley/zero-exposure-safety-bench", Issues = "https://github.com/M-Colley/zero-exposure-safety-bench/issues" }
+dependencies = [
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "numpy>=1.26",
+    "Pillow>=10.3",
+    "opencv-python-headless>=4.9",
+    "scenedetect>=0.6.4",
+    "ImageHash>=4.3.1",
+    "pdqhash>=0.2.7",
+    "openai>=1.40",
+    "httpx>=0.27",
+    "scikit-learn>=1.5",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+inspect = ["inspect-ai>=0.3.40"]
+linux-vpdq = ["vpdq>=0.2.5 ; sys_platform == 'linux'"]
+
+[project.scripts]
+zesb = "zesb.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-PyYAML>=6.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/zesb"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+disallow_any_generics = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "pdqhash",
+    "cv2",
+    "cv2.*",
+    "imagehash",
+    "scenedetect",
+    "sklearn.metrics",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

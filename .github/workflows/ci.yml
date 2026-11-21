@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality-and-tests:
+    name: Lint, Typecheck & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv and Python 3.12
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --dev
+
+      - name: Run Ruff linter
+        run: uv run ruff check .
+
+      - name: Check Ruff formatting
+        run: uv run ruff format --check .
+
+      - name: Run strict Mypy typecheck
+        run: uv run mypy --strict src/zesb
+
+      - name: Run synthetic test suite
+        run: uv run pytest -v
+
+  container-airgap-smoke:
+    name: Rootless Air-Gapped OCI Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv and Python 3.12
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies for fixture generation
+        run: uv sync --frozen --dev
+
+      - name: Build rootless OCI container
+        run: docker build -t zesb:ci .
+
+      - name: Generate synthetic input fixtures
+        run: |
+          uv run python - <<'PY'
+          import json, os, pathlib
+          from tests.conftest import make_geometric_scene_rgb, make_concentric_rgb, write_synthetic_png
+          from zesb.stages.hash_stage import compute_pdq, pdq_bits_to_hex
+
+          base = pathlib.Path(os.environ["RUNNER_TEMP"])
+          in_dir = base / "zesb_in"
+          out_dir = base / "zesb_out"
+          media = in_dir / "media"
+          out_dir.mkdir(parents=True, exist_ok=True)
+
+          sens = make_geometric_scene_rgb(256, 256)
+          safe = make_concentric_rgb(256, 256, ring=16)
+          write_synthetic_png(media / "vault" / "sens_01.png", sens)
+          write_synthetic_png(media / "benign" / "safe_01.png", safe)
+
+          bits, _ = compute_pdq(sens)
+          (in_dir / "pdq_index.jsonl").write_text(
+              json.dumps({"pdq_hex": pdq_bits_to_hex(bits), "categories": ["SENSITIVE"]}) + "\n",
+              encoding="utf-8",
+          )
+          rows = [
+              {"sample_id": "s1", "relative_path": "vault/sens_01.png", "media_type": "IMAGE", "ground_truth": "SENSITIVE", "categories": ["SENSITIVE"]},
+              {"sample_id": "n1", "relative_path": "benign/safe_01.png", "media_type": "IMAGE", "ground_truth": "SAFE", "hard_negative_tag": "family_vacation"},
+          ]
+          (in_dir / "manifest.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+          PY
+          chmod -R a+rX "$RUNNER_TEMP/zesb_in"
+          chmod 0777 "$RUNNER_TEMP/zesb_out"
+
+      - name: Run container with --network=none and --read-only
+        run: |
+          docker run --rm --network=none --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            -v "$RUNNER_TEMP/zesb_in:/input:ro" \
+            -v "$RUNNER_TEMP/zesb_out:/output:rw" \
+            zesb:ci \
+            --manifest /input/manifest.jsonl \
+            --media-root /input/media \
+            --config /app/configs/binary_default.yaml \
+            --hash-index /input/pdq_index.jsonl \
+            --output-dir /output
+
+      - name: Verify container outputs and zero-exposure invariant
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          out_dir = pathlib.Path(os.environ["RUNNER_TEMP"]) / "zesb_out"
+          metrics_bytes = (out_dir / "metrics.json").read_bytes()
+          errors_bytes = (out_dir / "sanitized_errors.jsonl").read_bytes()
+          assert b"vault" not in metrics_bytes and b"sens_01.png" not in metrics_bytes
+          assert b"vault" not in errors_bytes and b"sens_01.png" not in errors_bytes
+          metrics = json.loads(metrics_bytes.decode("utf-8"))
+          assert metrics["effective_detection"]["f1"] == 1.0
+          print("Air-gapped container smoke test passed:", metrics["effective_detection"])
+          PY

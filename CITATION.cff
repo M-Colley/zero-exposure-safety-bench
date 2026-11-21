@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: "Zero-Exposure Safety Benchmark (zesb)"
+message: "If you use this software in research or safety evaluations, please cite it using the metadata below."
+type: software
+authors:
+  - family-names: "Colley"
+    given-names: "Mark"
+license: MIT
+version: "0.1.0"
+date-released: "2026-11-21"
+repository-code: "https://github.com/M-Colley/zero-exposure-safety-bench"
+url: "https://github.com/M-Colley/zero-exposure-safety-bench"
+keywords:
+  - "content-moderation"
+  - "trust-and-safety"
+  - "multimodal-benchmark"
+  - "perceptual-hashing"
+  - "vision-language-models"
+  - "zero-exposure"

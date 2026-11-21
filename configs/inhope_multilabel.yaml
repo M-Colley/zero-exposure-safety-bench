@@ -1,0 +1,41 @@
+name: inhope_multilabel
+version: "1.0"
+taxonomy:
+  mode: multilabel
+  categories:
+    - id: CSAM_CONFIRMED
+      label: Child Sexual Abuse Material
+      description: >-
+        Visual depiction of sexually explicit conduct involving a minor or
+        sexualized focus on the genitalia of a minor.
+    - id: CSAM_SUSPECTED
+      label: Suspected Child Exploitation or Grooming Context
+      description: >-
+        Non-explicit but concerning exploitation indicators requiring
+        contextual review against benign pediatric or family lookalikes.
+    - id: GRAPHIC_VIOLENCE
+      label: Extreme Graphic Violence or Gore
+      description: >-
+        Real-world lethal violence, severe bodily trauma, dismemberment, or
+        torture outside medical, educational, or journalistic reporting.
+    - id: SELF_HARM
+      label: Self-Harm or Suicide Encouragement
+      description: >-
+        Visual depiction or instructional promotion of self-injury or suicide.
+  benign_lookalikes:
+    - Pediatric medical care, clinical documentation, and surgical training
+    - Non-sexualized family vacation, beach, and everyday childhood imagery
+    - Martial arts, boxing, wrestling, and staged theatrical combat
+    - Historical conflict archives and news reporting with editorial framing
+ingest:
+  scene_threshold: 27.0
+  min_fps: 1.0
+  dedup_hamming_threshold: 4
+cascade:
+  pdq_distance_threshold: 31
+  pdq_min_quality: 50
+  borderline_low: 0.25
+  borderline_high: 0.90
+  positive_threshold: 0.50
+  window_sec: 5.0
+  allow_non_private_hosts: false

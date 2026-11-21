@@ -1,0 +1,27 @@
+name: binary_default
+version: "1.0"
+taxonomy:
+  mode: binary
+  categories:
+    - id: SENSITIVE
+      label: Graphic Violence or Child Abuse Material
+      description: >-
+        Depictions of child sexual abuse material, child sexual exploitation,
+        extreme graphic interpersonal violence, gore, or self-harm instruction.
+  benign_lookalikes:
+    - Pediatric dermatology, clinical photography, and medical surgery
+    - Family beach, swimming, or bath photos with no sexualized context
+    - Combat sports, martial arts, and sanctioned athletic competition
+    - Theatrical props, film special effects, and historical documentaries
+ingest:
+  scene_threshold: 27.0
+  min_fps: 1.0
+  dedup_hamming_threshold: 4
+cascade:
+  pdq_distance_threshold: 31
+  pdq_min_quality: 50
+  borderline_low: 0.25
+  borderline_high: 0.90
+  positive_threshold: 0.50
+  window_sec: 5.0
+  allow_non_private_hosts: false
