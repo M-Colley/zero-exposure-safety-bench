@@ -1,7 +1,7 @@
 # Zero-Exposure Safety Benchmark (`zesb`)
 
 [![CI](https://github.com/M-Colley/zero-exposure-safety-bench/actions/workflows/ci.yml/badge.svg)](https://github.com/M-Colley/zero-exposure-safety-bench/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Typed: mypy strict](https://img.shields.io/badge/typing-mypy%20strict-1f6feb.svg)](https://mypy-lang.org/)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Container: Rootless Air-Gapped](https://img.shields.io/badge/OCI-rootless%20%7C%20--network%3Dnone-success.svg)](Dockerfile)
@@ -45,7 +45,7 @@ flowchart LR
 
 ### 1. Installation
 
-Install `zesb` with `uv` on Python 3.11 or newer across Windows, macOS, or Linux:
+Install `zesb` with `uv` on Python 3.12 or newer across Windows, macOS, or Linux:
 
 ```bash
 git clone https://github.com/M-Colley/zero-exposure-safety-bench.git

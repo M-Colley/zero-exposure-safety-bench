@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.25"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
@@ -9,25 +9,25 @@ description = "Zero-exposure multimodal safety benchmark for graphic violence an
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Mark Colley" }]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 urls = { Homepage = "https://github.com/M-Colley/zero-exposure-safety-bench", Repository = "https://github.com/M-Colley/zero-exposure-safety-bench", Issues = "https://github.com/M-Colley/zero-exposure-safety-bench/issues" }
 dependencies = [
-    "pydantic>=2.7",
-    "pyyaml>=6.0",
-    "numpy>=1.26",
-    "Pillow>=10.3",
-    "opencv-python-headless>=4.9",
-    "scenedetect>=0.6.4",
-    "ImageHash>=4.3.1",
-    "pdqhash>=0.2.7",
-    "openai>=1.40",
-    "httpx>=0.27",
-    "scikit-learn>=1.5",
-    "typer>=0.12",
+    "pydantic>=2.12",
+    "pyyaml>=6.0.2",
+    "numpy>=2.2",
+    "Pillow>=12.0",
+    "opencv-python-headless>=5.0",
+    "scenedetect>=0.7.2",
+    "ImageHash>=4.3.2",
+    "pdqhash>=0.2.8",
+    "openai>=2.0",
+    "httpx>=0.28.1",
+    "scikit-learn>=1.8",
+    "typer>=0.20",
 ]
 
 [project.optional-dependencies]
-inspect = ["inspect-ai>=0.3.40"]
+inspect = ["inspect-ai>=0.3.200"]
 linux-vpdq = ["vpdq>=0.2.5 ; sys_platform == 'linux'"]
 
 [project.scripts]
@@ -35,11 +35,11 @@ zesb = "zesb.cli:app"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.24",
-    "ruff>=0.6",
-    "mypy>=1.11",
-    "types-PyYAML>=6.0",
+    "pytest>=9.0",
+    "pytest-asyncio>=1.3",
+    "ruff>=0.15",
+    "mypy>=2.0",
+    "types-PyYAML>=6.0.12",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -54,7 +54,7 @@ src = ["src", "tests"]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 strict = true
 warn_unused_configs = true
 disallow_any_generics = true

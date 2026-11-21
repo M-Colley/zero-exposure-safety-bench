@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.13-slim-bookworm AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
@@ -18,7 +18,7 @@ COPY src ./src
 
 RUN uv sync --frozen --no-dev --no-editable
 
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:3.13-slim-bookworm AS runtime
 
 ENV ZESB_OFFLINE_ONLY=1 \
     HOME=/tmp \
@@ -27,7 +27,7 @@ ENV ZESB_OFFLINE_ONLY=1 \
     PYTHONUNBUFFERED=1
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libglib2.0-0 \
+    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app /input /models /output \
     && chown -R 65532:65532 /app /input /models /output
