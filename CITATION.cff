@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: "Colley"
     given-names: "Mark"
-license: MIT
+license: GPL-3.0-or-later
 version: "0.1.0"
 date-released: "2026-11-21"
 repository-code: "https://github.com/M-Colley/zero-exposure-safety-bench"

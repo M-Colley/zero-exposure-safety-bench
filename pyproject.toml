@@ -7,7 +7,7 @@ name = "zero-exposure-safety-bench"
 version = "0.1.0"
 description = "Zero-exposure multimodal safety benchmark for graphic violence and child abuse detection cascades"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "Mark Colley" }]
 requires-python = ">=3.12"
 urls = { Homepage = "https://github.com/M-Colley/zero-exposure-safety-bench", Repository = "https://github.com/M-Colley/zero-exposure-safety-bench", Issues = "https://github.com/M-Colley/zero-exposure-safety-bench/issues" }

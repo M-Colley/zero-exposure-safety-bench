@@ -5,7 +5,7 @@
 [![Typed: mypy strict](https://img.shields.io/badge/typing-mypy%20strict-1f6feb.svg)](https://mypy-lang.org/)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Container: Rootless Air-Gapped](https://img.shields.io/badge/OCI-rootless%20%7C%20--network%3Dnone-success.svg)](Dockerfile)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: GPL v3+](https://img.shields.io/badge/License-GPL%20v3%2B-blue.svg)](LICENSE)
 
 `zesb` is an open-source evaluation harness and air-gapped OCI container for benchmarking automated detection of graphic violence and child sexual exploitation and abuse material (CSAM) across images and videos. Evaluating high-severity harms requires protecting both human moderators and machine-learning researchers from psychological trauma and legal contraband exposure. Consequently, `zesb` enforces programmatic pixel, path, and payload suppression across all logs and error artifacts while supporting blind `code-to-data` container execution inside authorized statutory clearinghouses.
 
@@ -217,10 +217,10 @@ If you use `zesb` in academic publications or grant proposals, please cite the s
   year         = {2026},
   version      = {0.1.0},
   url          = {https://github.com/M-Colley/zero-exposure-safety-bench},
-  license      = {MIT}
+  license      = {GPL-3.0-or-later}
 }
 ```
 
 ## License
 
-Released under the [MIT License](LICENSE).
+Copyright (C) 2026 Mark Colley. Released under the GNU General Public License v3.0 or later ([`GPL-3.0-or-later`](LICENSE)).
