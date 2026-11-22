@@ -17,7 +17,7 @@ dependencies = [
     "numpy>=2.2",
     "Pillow>=12.0",
     "opencv-python-headless>=5.0",
-    "scenedetect>=0.7.2",
+    "scenedetect-headless>=0.7.2",
     "ImageHash>=4.3.2",
     "pdqhash>=0.2.8",
     "openai>=2.0",
@@ -65,7 +65,6 @@ module = [
     "pdqhash",
     "cv2",
     "cv2.*",
-    "imagehash",
     "scenedetect",
     "sklearn.metrics",
 ]

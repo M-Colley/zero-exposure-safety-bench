@@ -27,7 +27,7 @@ ENV ZESB_OFFLINE_ONLY=1 \
     PYTHONUNBUFFERED=1
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
+    && apt-get install -y --no-install-recommends libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app /input /models /output \
     && chown -R 65532:65532 /app /input /models /output
