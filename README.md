@@ -5,9 +5,9 @@
 [![Typed: mypy strict](https://img.shields.io/badge/typing-mypy%20strict-1f6feb.svg)](https://mypy-lang.org/)
 [![Code style: Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Container: Rootless Air-Gapped](https://img.shields.io/badge/OCI-rootless%20%7C%20--network%3Dnone-success.svg)](Dockerfile)
-[![License: GPL v3+](https://img.shields.io/badge/License-GPL%20v3%2B-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-`zesb` is an open-source evaluation harness and air-gapped OCI container for benchmarking automated detection of graphic violence and child sexual exploitation and abuse material (CSAM) across images and videos. Evaluating high-severity harms requires protecting both human moderators and machine-learning researchers from psychological trauma and legal contraband exposure. Consequently, `zesb` enforces programmatic pixel, path, and payload suppression across all logs and error artifacts while supporting blind `code-to-data` container execution inside authorized statutory clearinghouses.
+`zesb` is an open-source evaluation harness and air-gapped OCI container for benchmarking automated detection of graphic violence, terrorist and violent extremist content (TVEC), and child sexual exploitation and abuse material (CSAM) across images and videos. Evaluating high-severity harms requires protecting both human moderators and machine-learning researchers from psychological trauma and legal contraband exposure. Consequently, `zesb` enforces programmatic pixel, path, and payload suppression across all logs and error artifacts while supporting blind `code-to-data` container execution inside authorized statutory clearinghouses.
 
 ---
 
@@ -20,6 +20,7 @@
 | **Zero-Exposure Privacy Guardrails** | Excludes pixel arrays via `pydantic` validators, strips EXIF data, and forbids previews or file paths whenever `ground_truth == "SENSITIVE"` | Prevents accidental leakage of sensitive media into benchmark logs, `.eval` archives, or debugging notebooks |
 | **Calibrated High-Precision Metrics** | Extracts two-class softmax probabilities from local `vLLM` token logprobs to compute `PR-AUC`, `Recall @ 99.9% Precision`, and `Recall @ 0.1% FPR` | Evaluates detectors at operational reporting and quarantine thresholds stratified across benign hard-negative slices |
 | **Provider Block & Refusal Accounting** | Distinguishes `SENSITIVE` and `SAFE` predictions from `PROVIDER_BLOCKED` (`HTTP 400`) and `MODEL_REFUSED` responses | Separates strict taxonomy accuracy from upstream safety-filter interception rates |
+| **Human Exposure Budget** | Counts sensitive items and video seconds routed to human review, against a review-everything baseline and at fixed recall targets | Quantifies how much a cascade reduces reviewer exposure to traumatic material, separately from detection accuracy |
 | **Air-Gapped Clearinghouse Container** | Packages the CLI in a rootless (`USER 65532:65532`), read-only OCI image with `ZESB_OFFLINE_ONLY=1` host enforcement | Enables external hotlines and clearinghouses (such as IWF, NCMEC, or Thorn) to audit and run models blindly on restricted datasets |
 
 ---
@@ -138,10 +139,39 @@ uv run zesb perturb-test \
     "VLM": 105,
     "NONE": 0
   },
+  "human_exposure": {
+    "manual_exposure_items": 200,
+    "manual_exposure_video_sec": 5400.0,
+    "review_items": 102,
+    "exposure_items": 75,
+    "exposure_video_sec": 610.0,
+    "auto_actioned_items": 110,
+    "missed_sensitive_items": 15,
+    "exposure_items_per_1000": 62.5,
+    "exposure_video_sec_per_1000": 508.3,
+    "exposure_reduction_items": 0.625,
+    "exposure_reduction_video_sec": 0.887,
+    "at_recall": {
+      "0.950": {"threshold": 0.31, "achieved_recall": 0.95, "review_items": 131, "exposure_items": 80}
+    }
+  },
   "latency_p50_ms": 18.4,
   "latency_p95_ms": 412.7
 }
 ```
+
+### 5. Human Exposure Budget
+
+Detection metrics do not show how much sensitive material a reviewer still has to view. `human_exposure` reports this quantity under an explicit review model, configured in the `exposure` block of the YAML configuration:
+
+* An item is routed to human review when its verdict is `SENSITIVE`, `PROVIDER_BLOCKED`, `MODEL_REFUSED`, or `ERROR`. Errors fall back to full manual review.
+* With `hash_auto_action: true`, `SENSITIVE` items that exit at Stage 1 are actioned without viewing, as with known hashed content.
+* With `targeted_video_review: true`, a reviewed video counts only the union of flagged windows `[t, t + window_sec]`. Otherwise it counts the full duration.
+* `exposure_items` and `exposure_video_sec` count `SENSITIVE` ground-truth items routed to review. `review_items` additionally counts false positives, which add workload but not exposure.
+* `manual_exposure_*` is the review-everything baseline, and `exposure_reduction_*` is the relative reduction against it.
+* `at_recall` sweeps the risk-score threshold and reports review load and exposure at the highest threshold reaching each target in `recall_targets`. Hash matches count as detected and errors count as reviewed at every threshold.
+
+The budget makes cascade settings and review-interface interventions comparable on a common exposure scale at matched recall.
 
 ---
 
@@ -175,6 +205,7 @@ Two reference YAML configurations ship in [`configs/`](configs/):
 
 * [`configs/binary_default.yaml`](configs/binary_default.yaml): Binary `SENSITIVE` vs. `SAFE` evaluation with standard benign lookalike definitions.
 * [`configs/inhope_multilabel.yaml`](configs/inhope_multilabel.yaml): Multi-label schema aligned with INHOPE child protection categories and graphic violence subcategories.
+* [`configs/tvec_gifct.yaml`](configs/tvec_gifct.yaml): Multi-label schema for terrorist and violent extremist content following the behavioural labels and content types of the GIFCT hash-sharing database taxonomy, with benign lookalikes such as news reporting, video-game footage, state military material, and mainstream religious content.
 
 For teams standardizing on UK AISI `Inspect AI`, `zesb.inspect_bridge` wraps `CascadeRunner` into an `inspect_ai.Task` that logs only opaque `sample_id` strings and `SHA-256` digests inside `.eval` files:
 
@@ -217,10 +248,10 @@ If you use `zesb` in academic publications or grant proposals, please cite the s
   year         = {2026},
   version      = {0.1.0},
   url          = {https://github.com/M-Colley/zero-exposure-safety-bench},
-  license      = {GPL-3.0-or-later}
+  license      = {Apache-2.0}
 }
 ```
 
 ## License
 
-Copyright (C) 2026 Mark Colley. Released under the GNU General Public License v3.0 or later ([`GPL-3.0-or-later`](LICENSE)).
+Copyright 2026 Mark Colley. Released under the Apache License 2.0 ([`Apache-2.0`](LICENSE)); see [`NOTICE`](NOTICE).

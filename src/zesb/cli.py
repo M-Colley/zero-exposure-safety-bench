@@ -104,7 +104,7 @@ async def _run_evaluation(
     for sample in samples:
         results.append(await runner.evaluate_sample(sample=sample, media_root=media_root))
 
-    metrics = compute_benchmark_metrics(results)
+    metrics = compute_benchmark_metrics(results, config.exposure)
     samples_by_id = {sample.sample_id: sample for sample in samples}
     error_records = build_sanitized_error_records(
         results=results,

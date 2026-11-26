@@ -163,6 +163,21 @@ def extract_video_candidates(
     )
 
 
+def probe_video_duration(video_path: Path) -> float:
+    """Return video duration in seconds from container metadata, or 0.0 if unknown."""
+    cap = cv2.VideoCapture(str(video_path))
+    try:
+        if not cap.isOpened():
+            return 0.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = float(cap.get(cv2.CAP_PROP_FPS))
+    finally:
+        cap.release()
+    if total_frames <= 0 or fps <= 0.0:
+        return 0.0
+    return total_frames / fps
+
+
 def ingest_sample(
     sample: DatasetSample,
     media_root: Path,

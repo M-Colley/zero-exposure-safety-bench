@@ -1,0 +1,68 @@
+# Terrorist and violent extremist content (TVEC) for images and video.
+# Category IDs follow the behavioural labels and content types of the GIFCT
+# hash-sharing database taxonomy (GIFCT Taxonomy Report 2021, HSDB taxonomy Dec 2022:
+# https://gifct.org/wp-content/uploads/2022/12/HSDB-Taxonomy-FOR-PUBLICATION-Dec-2022-1.pdf). Verify them
+# against the current taxonomy before operational use. UK referral units assess
+# content against the Terrorism Acts 2000 and 2006, whose thresholds differ from
+# GIFCT inclusion parameters. Attacker manifestos (PDF text) are out of scope
+# because zesb ingests images and video only.
+name: tvec_gifct
+version: "1.0"
+taxonomy:
+  mode: multilabel
+  categories:
+    - id: IMMINENT_CREDIBLE_THREAT
+      label: Imminent Credible Threat
+      description: >-
+        Content that announces or coordinates a specific, credible act of
+        terrorist or violent extremist violence.
+    - id: GRAPHIC_VIOLENCE_DEFENSELESS
+      label: Graphic Violence Against Defenseless People
+      description: >-
+        Depictions of executions, torture, or killing of defenseless people
+        produced by a terrorist or violent extremist entity.
+    - id: GLORIFICATION_TERRORIST_ACTS
+      label: Glorification of Terrorist Acts
+      description: >-
+        Content that praises, celebrates, or memorialises terrorist attacks or
+        their perpetrators in order to promote further violence.
+    - id: RECRUITMENT_INSTRUCTION
+      label: Recruitment and Instruction
+      description: >-
+        Content that recruits for a terrorist or violent extremist entity or
+        provides operational instruction for attacks.
+    - id: ATTACKER_PRODUCED
+      label: Attacker-Produced Content
+      description: >-
+        Livestreams, recordings, or images created by the perpetrator or an
+        accomplice of an attack, including re-edits and screen recordings.
+    - id: BRANDED_PUBLICATION
+      label: Branded Terrorist Publication
+      description: >-
+        Propaganda carrying the logo, flag, or media-wing marker of a terrorist
+        or violent extremist entity, including non-violent imagery.
+  benign_lookalikes:
+    - News reporting and documentaries on terrorism with editorial framing
+    - First-person shooter and other video-game footage, including livestreams
+    - Airsoft, paintball, hunting, and sport shooting
+    - Official state military, police, and government material
+    - Mainstream religious practice, scripture, sermons, and religious music
+    - Lawful political protest, activism, and non-proscribed flags and symbols
+    - Academic, counter-extremism, and counter-narrative material
+    - Film, television, theatre, and historical archive footage
+ingest:
+  scene_threshold: 27.0
+  min_fps: 1.0
+  dedup_hamming_threshold: 4
+cascade:
+  pdq_distance_threshold: 31
+  pdq_min_quality: 50
+  borderline_low: 0.25
+  borderline_high: 0.90
+  positive_threshold: 0.50
+  window_sec: 5.0
+  allow_non_private_hosts: false
+exposure:
+  hash_auto_action: true
+  targeted_video_review: true
+  recall_targets: [0.90, 0.95, 0.99]

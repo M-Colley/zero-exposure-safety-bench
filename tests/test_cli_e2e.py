@@ -156,6 +156,8 @@ def test_cli_evaluate_zero_exposure_leak_audit(tmp_path: Path) -> None:
     assert metrics_data["total_samples"] == 5
     assert metrics_data["sensitive_samples"] == 3
     assert metrics_data["safe_samples"] == 2
+    assert metrics_data["human_exposure"]["manual_exposure_items"] == 3
+    assert metrics_data["human_exposure"]["manual_exposure_video_sec"] > 0.0
     assert metrics_data["hard_negative_fpr_by_tag"]["pediatric_dermatology"] == 1.0
     assert metrics_data["hard_negative_fpr_by_tag"]["family_vacation"] == 0.0
 
