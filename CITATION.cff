@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: "Colley"
     given-names: "Mark"
-license: GPL-3.0-or-later
+license: Apache-2.0
 version: "0.1.0"
 date-released: "2026-11-21"
 repository-code: "https://github.com/M-Colley/zero-exposure-safety-bench"
@@ -17,3 +17,5 @@ keywords:
   - "perceptual-hashing"
   - "vision-language-models"
   - "zero-exposure"
+  - "terrorist-content"
+  - "human-exposure"

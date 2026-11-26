@@ -13,7 +13,7 @@ from sklearn.metrics import (
     roc_curve,
 )
 
-from zesb.schemas import CascadeResult, GroundTruthState, VerdictStatus
+from zesb.schemas import CascadeResult, ExposureConfig, GroundTruthState, VerdictStatus
 
 EFFECTIVE_POSITIVE_VERDICTS: frozenset[VerdictStatus] = frozenset(
     {
@@ -67,6 +67,36 @@ class EffectiveDetectionMetrics(BaseModel):
     recall_at_fpr_010: float = Field(ge=0.0, le=1.0)
 
 
+class ExposureAtRecall(BaseModel):
+    """Human review load and exposure at the highest score threshold reaching a recall target."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+    achieved_recall: float = Field(ge=0.0, le=1.0)
+    review_items: int = Field(ge=0)
+    exposure_items: int = Field(ge=0)
+
+
+class HumanExposureMetrics(BaseModel):
+    """Sensitive material a human reviewer must view, against a review-everything baseline."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    manual_exposure_items: int = Field(ge=0)
+    manual_exposure_video_sec: float = Field(ge=0.0)
+    review_items: int = Field(ge=0)
+    exposure_items: int = Field(ge=0)
+    exposure_video_sec: float = Field(ge=0.0)
+    auto_actioned_items: int = Field(ge=0)
+    missed_sensitive_items: int = Field(ge=0)
+    exposure_items_per_1000: float = Field(ge=0.0)
+    exposure_video_sec_per_1000: float = Field(ge=0.0)
+    exposure_reduction_items: float = Field(le=1.0)
+    exposure_reduction_video_sec: float = Field(le=1.0)
+    at_recall: dict[str, ExposureAtRecall]
+
+
 class BenchmarkMetrics(BaseModel):
     """Complete benchmark evaluation metrics across both views and slices."""
 
@@ -79,6 +109,7 @@ class BenchmarkMetrics(BaseModel):
     effective_detection: EffectiveDetectionMetrics
     hard_negative_fpr_by_tag: dict[str, float]
     stage_exit_distribution: dict[str, int]
+    human_exposure: HumanExposureMetrics
     latency_p50_ms: float = Field(ge=0.0)
     latency_p95_ms: float = Field(ge=0.0)
 
@@ -202,7 +233,121 @@ def _compute_multilabel_metrics(
     return micro_f1, macro_f1, per_cat_pr_auc
 
 
-def compute_benchmark_metrics(results: list[CascadeResult]) -> BenchmarkMetrics:
+def _is_auto_actioned(res: CascadeResult, cfg: ExposureConfig) -> bool:
+    return (
+        cfg.hash_auto_action
+        and res.triggered_stage == "HASH"
+        and res.verdict == VerdictStatus.SENSITIVE
+    )
+
+
+def _review_seconds(res: CascadeResult, cfg: ExposureConfig) -> float:
+    if res.verdict == VerdictStatus.ERROR or not cfg.targeted_video_review:
+        return res.media_duration_sec
+    return res.review_window_sec if res.review_window_sec > 0.0 else res.media_duration_sec
+
+
+def _exposure_at_recall(
+    results: list[CascadeResult],
+    cfg: ExposureConfig,
+) -> dict[str, ExposureAtRecall]:
+    """Sweep the risk-score threshold; errors always go to review, hash matches never."""
+    auto = np.array([_is_auto_actioned(r, cfg) for r in results], dtype=bool)
+    forced = np.array([r.verdict == VerdictStatus.ERROR for r in results], dtype=bool) & ~auto
+    sens = np.array([r.ground_truth == GroundTruthState.SENSITIVE for r in results], dtype=bool)
+    scores = np.array([float(r.risk_score) for r in results], dtype=np.float64)
+    sensitive_total = int(sens.sum())
+    if sensitive_total == 0:
+        return {}
+
+    free = ~auto & ~forced
+    order = np.argsort(-scores[free], kind="stable")
+    free_scores = scores[free][order]
+    free_sens_cum = np.concatenate(([0], np.cumsum(sens[free][order])))
+    base_detected = int((sens & (auto | forced)).sum())
+    base_exposed = int((sens & forced).sum())
+    base_review = int(forced.sum())
+
+    # Candidate thresholds: route no free item (None), then each unique score descending.
+    candidates: list[tuple[float | None, int]] = [(None, 0)]
+    for tau in np.unique(free_scores)[::-1]:
+        k = int(np.searchsorted(-free_scores, -tau, side="right"))
+        candidates.append((float(tau), k))
+
+    out: dict[str, ExposureAtRecall] = {}
+    for target in cfg.recall_targets:
+        for tau_value, k in candidates:
+            recall = (base_detected + int(free_sens_cum[k])) / sensitive_total
+            if recall >= target:
+                out[f"{target:.3f}"] = ExposureAtRecall(
+                    threshold=tau_value,
+                    achieved_recall=recall,
+                    review_items=base_review + k,
+                    exposure_items=base_exposed + int(free_sens_cum[k]),
+                )
+                break
+    return out
+
+
+def compute_human_exposure(
+    results: list[CascadeResult],
+    config: ExposureConfig | None = None,
+) -> HumanExposureMetrics:
+    """Count sensitive items and video seconds routed to human review.
+
+    An item is routed to review when its verdict is SENSITIVE, PROVIDER_BLOCKED,
+    MODEL_REFUSED, or ERROR, unless it is a hash match that is actioned without
+    viewing (``hash_auto_action``). Reviewed videos count the flagged review
+    windows (``targeted_video_review``) or their full duration.
+    """
+    cfg = config or ExposureConfig()
+    total = len(results)
+    review_verdicts = EFFECTIVE_POSITIVE_VERDICTS | {VerdictStatus.ERROR}
+
+    manual_items = 0
+    manual_sec = 0.0
+    review_items = 0
+    exposure_items = 0
+    exposure_sec = 0.0
+    auto_items = 0
+    missed = 0
+    for res in results:
+        sensitive = res.ground_truth == GroundTruthState.SENSITIVE
+        if sensitive:
+            manual_items += 1
+            manual_sec += res.media_duration_sec
+        if _is_auto_actioned(res, cfg):
+            auto_items += int(sensitive)
+            continue
+        if res.verdict in review_verdicts:
+            review_items += 1
+            if sensitive:
+                exposure_items += 1
+                exposure_sec += _review_seconds(res, cfg)
+        elif sensitive:
+            missed += 1
+
+    per_1000 = 1000.0 / total if total > 0 else 0.0
+    return HumanExposureMetrics(
+        manual_exposure_items=manual_items,
+        manual_exposure_video_sec=manual_sec,
+        review_items=review_items,
+        exposure_items=exposure_items,
+        exposure_video_sec=exposure_sec,
+        auto_actioned_items=auto_items,
+        missed_sensitive_items=missed,
+        exposure_items_per_1000=exposure_items * per_1000,
+        exposure_video_sec_per_1000=exposure_sec * per_1000,
+        exposure_reduction_items=1.0 - exposure_items / manual_items if manual_items else 0.0,
+        exposure_reduction_video_sec=1.0 - exposure_sec / manual_sec if manual_sec else 0.0,
+        at_recall=_exposure_at_recall(results, cfg),
+    )
+
+
+def compute_benchmark_metrics(
+    results: list[CascadeResult],
+    exposure_config: ExposureConfig | None = None,
+) -> BenchmarkMetrics:
     """Compute dual-view metrics, operating points, and hard-negative FPR."""
     total = len(results)
     y_true = [1 if r.ground_truth == GroundTruthState.SENSITIVE else 0 for r in results]
@@ -279,6 +424,7 @@ def compute_benchmark_metrics(results: list[CascadeResult]) -> BenchmarkMetrics:
         ),
         hard_negative_fpr_by_tag=hard_negative_fpr,
         stage_exit_distribution=stage_dist,
+        human_exposure=compute_human_exposure(results, exposure_config),
         latency_p50_ms=p50,
         latency_p95_ms=p95,
     )

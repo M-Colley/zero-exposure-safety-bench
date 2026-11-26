@@ -7,12 +7,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from zesb.ingest import ingest_sample
+from zesb.ingest import ingest_sample, probe_video_duration
 from zesb.schemas import (
     BenchmarkConfig,
     CascadeResult,
     DatasetSample,
     FrameCandidate,
+    MediaType,
     StagePrediction,
     VerdictStatus,
 )
@@ -35,6 +36,39 @@ class FrameOutcome:
     timestamp_sec: float
     prediction: StagePrediction
     triggered_stage: TriggeredStage
+
+
+_REVIEW_VERDICTS: frozenset[VerdictStatus] = frozenset(
+    {
+        VerdictStatus.SENSITIVE,
+        VerdictStatus.PROVIDER_BLOCKED,
+        VerdictStatus.MODEL_REFUSED,
+    }
+)
+
+
+def review_window_seconds(
+    outcomes: list[FrameOutcome],
+    window_sec: float,
+    positive_threshold: float,
+    duration_sec: float,
+) -> float:
+    """Length of the union of review windows [t, t + window_sec] over flagged frames."""
+    intervals = sorted(
+        (o.timestamp_sec, min(duration_sec, o.timestamp_sec + window_sec))
+        for o in outcomes
+        if o.prediction.verdict in _REVIEW_VERDICTS or o.prediction.risk_score >= positive_threshold
+    )
+    total = 0.0
+    cur_start, cur_end = -1.0, -1.0
+    for start, end in intervals:
+        if start > cur_end:
+            total += max(0.0, cur_end - cur_start)
+            cur_start, cur_end = start, end
+        else:
+            cur_end = max(cur_end, end)
+    total += max(0.0, cur_end - cur_start)
+    return total
 
 
 def pool_video_outcomes(
@@ -229,6 +263,17 @@ class CascadeRunner:
             window_sec=self.config.cascade.window_sec,
             positive_threshold=self.config.cascade.positive_threshold,
         )
+        duration_sec = 0.0
+        review_sec = 0.0
+        if sample.media_type == MediaType.VIDEO:
+            last_ts = max((o.timestamp_sec for o in outcomes), default=0.0)
+            duration_sec = max(probe_video_duration(sample.resolve_media_path(media_root)), last_ts)
+            review_sec = review_window_seconds(
+                outcomes=outcomes,
+                window_sec=self.config.cascade.window_sec,
+                positive_threshold=self.config.cascade.positive_threshold,
+                duration_sec=duration_sec,
+            )
         elapsed_ms = (time.perf_counter_ns() - start_ns) / 1_000_000.0
 
         return CascadeResult(
@@ -243,4 +288,6 @@ class CascadeRunner:
             triggered_stage=triggered_stage,
             peak_timestamps_sec=peak_ts,
             latency_ms=elapsed_ms,
+            media_duration_sec=duration_sec,
+            review_window_sec=review_sec,
         )

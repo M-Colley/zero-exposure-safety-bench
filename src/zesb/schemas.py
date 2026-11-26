@@ -128,6 +128,8 @@ class CascadeResult(BaseModel):
     triggered_stage: Literal["HASH", "CLASSIFIER", "VLM", "NONE"]
     peak_timestamps_sec: list[float] = Field(default_factory=list)
     latency_ms: float = Field(ge=0.0)
+    media_duration_sec: float = Field(default=0.0, ge=0.0)
+    review_window_sec: float = Field(default=0.0, ge=0.0)
 
     @field_validator("risk_score", mode="before")
     @classmethod
@@ -236,6 +238,23 @@ class CascadeConfig(BaseModel):
         return self
 
 
+class ExposureConfig(BaseModel):
+    """Human review exposure model used to compute the exposure budget."""
+
+    model_config = STRICT_CONFIG
+
+    hash_auto_action: bool = True
+    targeted_video_review: bool = True
+    recall_targets: list[float] = Field(default_factory=lambda: [0.90, 0.95, 0.99])
+
+    @field_validator("recall_targets")
+    @classmethod
+    def _validate_recall_targets(cls, value: list[float]) -> list[float]:
+        if any(not 0.0 < target <= 1.0 for target in value):
+            raise ValueError("recall_targets must lie in (0.0, 1.0]")
+        return sorted(set(value))
+
+
 class BenchmarkConfig(BaseModel):
     """Top-level benchmark configuration loaded from YAML."""
 
@@ -246,3 +265,4 @@ class BenchmarkConfig(BaseModel):
     taxonomy: TaxonomyConfig
     ingest: IngestConfig = Field(default_factory=IngestConfig)
     cascade: CascadeConfig = Field(default_factory=CascadeConfig)
+    exposure: ExposureConfig = Field(default_factory=ExposureConfig)
